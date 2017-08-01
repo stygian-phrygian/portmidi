@@ -1,15 +1,17 @@
 require "./portmidi/*"
 
-class PortMidi
+module PortMidi
 
-  @@opened_midi_streams = Hash(Int32, Void*).new
+  extend self
 
-  def self.start()
+  @@opened_midi_streams = Hash(Int32, LibPortMidi::PortMidiStream*).new
+
+  def start()
     check_error(LibPortMidi.initialize)
     #populate_midi_devices
   end
 
-  def self.stop()
+  def stop()
     check_error LibPortMidi.terminate
     #@@midi_devices.clear
   end
@@ -17,13 +19,13 @@ class PortMidi
   class PortMidiException < Exception
   end
 
-  private def self.check_error(error : LibPortMidi::PmError)
+  private def check_error(error : LibPortMidi::PmError)
     unless error == LibPortMidi::PmError::PmNoError
         raise PortMidiException.new String.new(LibPortMidi.get_error_text(error))
     end
   end
 
-  def self.get_all_midi_devices()
+  def get_all_midi_devices()
     devices = Array(MidiDeviceInfo).new
     device_info : LibPortMidi::PmDeviceInfo
     LibPortMidi.count_devices().times do |device_id|
@@ -32,15 +34,6 @@ class PortMidi
     end
     devices
   end
-
-  def self.get_midi_inputs()
-      devices = get_all_midi_devices.select {|d| d.input}
-  end
-
-  def self.get_midi_outputs()
-      devices = get_all_midi_devices.select {|d| d.output}
-  end
-
 
   class MidiDeviceInfo
       # this class is the same as the PmDeviceInfo struct
