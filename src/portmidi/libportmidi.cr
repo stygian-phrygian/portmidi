@@ -2,21 +2,20 @@ require "lib_c"
 
 @[Link("portmidi")]
 lib LibPortMidi
-
-  alias Int            = LibC::Int
-  alias Long           = LibC::Long
+  alias Int = LibC::Int
+  alias Long = LibC::Long
   #
   alias PortMidiStream = Void
-  alias PmDeviceID     = Int
-  alias PmTimestamp    = Long
-  alias PmTimeProcPtr  = (Void* -> PmTimestamp)*
-  alias PmMessage      = Int32
+  alias PmDeviceID = Int
+  alias PmTimestamp = Long
+  alias PmTimeProcPtr = (Void* -> PmTimestamp)*
+  alias PmMessage = Int32
 
   enum PmError
-    PmNoError   = 0
-    PmNoData    = 0
-    PmGotData   = 1
-    PmHostError = -10000
+    PmNoError            =      0
+    PmNoData             =      0
+    PmGotData            =      1
+    PmHostError          = -10000
     PmInvalidDeviceId
     PmInsufficientMemory
     PmBufferTooSmall
@@ -29,15 +28,15 @@ lib LibPortMidi
 
   struct PmDeviceInfo
     structVersion : Int
-    interf        : LibC::Char*
-    name          : LibC::Char*
-    input         : Int
-    output        : Int
-    opened        : Int
+    interf : LibC::Char*
+    name : LibC::Char*
+    input : Int
+    output : Int
+    opened : Int
   end
 
   struct PmEvent
-    message   : PmMessage
+    message : PmMessage
     timestamp : PmTimestamp
   end
 
@@ -59,7 +58,7 @@ lib LibPortMidi
     # filter reset messages (0xFF)
     RESET = (1 << 0x0F)
     # filter all real-time messages
-    REALTIME = (ACTIVE | SYSEX | CLOCK |  PLAY | UNDEFINED | RESET | TICK)
+    REALTIME = (ACTIVE | SYSEX | CLOCK | PLAY | UNDEFINED | RESET | TICK)
     # filter note-on and note-off (0x90-0x9F and 0x80-0x8F
     NOTE = ((1 << 0x19) | (1 << 0x18))
     # filter channel aftertouch (most midi controllers use this) (0xD0-0xDF
@@ -86,29 +85,27 @@ lib LibPortMidi
     SYSTEMCOMMON = (MTC | SONG_POSITION | SONG_SELECT | TUNE)
   end
 
-  fun initialize = Pm_Initialize() : PmError
-  fun terminate = Pm_Terminate() : PmError
+  fun initialize = Pm_Initialize : PmError
+  fun terminate = Pm_Terminate : PmError
   fun has_host_error = Pm_HasHostError(stream : PortMidiStream*) : Int
   fun get_error_text = Pm_GetErrorText(errnum : PmError) : LibC::Char*
-  fun count_devices = Pm_CountDevices() : Int
-  fun get_default_input_device_id = Pm_GetDefaultInputDeviceID() : PmDeviceID
-  fun get_default_ouput_device_id = Pm_GetDefaultOutputDeviceID() : PmDeviceID
+  fun count_devices = Pm_CountDevices : Int
+  fun get_default_input_device_id = Pm_GetDefaultInputDeviceID : PmDeviceID
+  fun get_default_ouput_device_id = Pm_GetDefaultOutputDeviceID : PmDeviceID
   fun get_device_info = Pm_GetDeviceInfo(id : PmDeviceID) : PmDeviceInfo*
   fun open_input = Pm_OpenInput(stream : PortMidiStream**,
                                 inputDevice : PmDeviceID,
                                 inputDriverInfo : Void*,
                                 bufferSize : Long,
                                 time_proc : PmTimeProcPtr,
-                                time_info : Void*
-                               ) : PmError
+                                time_info : Void*) : PmError
   fun open_output = Pm_OpenOutput(stream : PortMidiStream**,
                                   outputDevice : PmDeviceID,
                                   outputDriverInfo : Void*,
                                   bufferSize : Long,
                                   time_proc : PmTimeProcPtr,
                                   time_info : Void*,
-                                  latency : Long
-                                 ) : PmError
+                                  latency : Long) : PmError
   fun set_filter = Pm_SetFilter(stream : PortMidiStream*, filter : Int32) : PmError
   fun set_channel_mask = Pm_setChannelMask(stream : PortMidiStream*, mask : Int) : PmError
   #
@@ -120,6 +117,4 @@ lib LibPortMidi
   fun write = Pm_Write(stream : PortMidiStream*, buffer : PmEvent*, length : Int32) : PmError
   fun write_short = Pm_WriteShort(stream : PortMidiStream*, when : PmTimestamp, msg : Int32) : PmError
   fun write_sysex = Pm_WriteSysEx(stream : PortMidiStream*, when : PmTimestamp, msg : UInt8*) : PmError
-
 end
-

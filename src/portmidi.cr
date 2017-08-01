@@ -4,7 +4,7 @@ module PortMidi
   extend self
 
   def start
-    check_error(LibPortMidi.initialize)
+    check_error LibPortMidi.initialize
     # populate_midi_devices
   end
 
@@ -56,9 +56,9 @@ module PortMidi
     def open
       unless @@opened_streams[@device_id]?
         if @input
-          LibPortMidi.open_input(out @stream, @device_id, nil, 512, nil, nil)
+          check_error LibPortMidi.open_input(out @stream, @device_id, nil, 512, nil, nil)
         else
-          LibPortMidi.open_output(out @stream, @device_id, nil, 512, nil, nil, 0)
+          check_error LibPortMidi.open_output(out @stream, @device_id, nil, 512, nil, nil, 0)
         end
         @opened = true
         @@opened_streams[@device_id] = @stream
