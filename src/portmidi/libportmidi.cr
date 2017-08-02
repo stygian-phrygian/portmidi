@@ -7,7 +7,7 @@ lib LibPortMidi
   #
   alias PortMidiStream = Void
   alias PmDeviceID = Int
-  alias PmTimestamp = Long
+  alias PmTimestamp = Int32
   alias PmTimeProcPtr = (Void* -> PmTimestamp)*
   alias PmMessage = Int32
 
@@ -35,6 +35,7 @@ lib LibPortMidi
     opened : Int
   end
 
+  #@[Packed]
   struct PmEvent
     message : PmMessage
     timestamp : PmTimestamp

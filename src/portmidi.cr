@@ -5,12 +5,10 @@ module PortMidi
 
   def start
     check_error LibPortMidi.initialize
-    # populate_midi_devices
   end
 
   def stop
     check_error LibPortMidi.terminate
-    # @@midi_devices.clear
   end
 
   class PortMidiException < Exception
@@ -32,11 +30,10 @@ module PortMidi
     devices
   end
 
+  # this class is the same as the PmDeviceInfo struct
+  # with the addition of the device id for added convenience
   private class MidiDevice
     @@opened_streams = Hash(Int32, LibPortMidi::PortMidiStream*).new
-
-    # this class is the same as the PmDeviceInfo struct
-    # with the addition of the device id for added convenience
 
     # these need type specification (else crystal refuses to compile)
     @input : Bool
@@ -53,6 +50,12 @@ module PortMidi
       @stream = uninitialized LibPortMidi::PortMidiStream*
     end
 
+    private def check_error(error : LibPortMidi::PmError)
+      unless error == LibPortMidi::PmError::PmNoError
+        raise PortMidiException.new String.new(LibPortMidi.get_error_text(error))
+      end
+    end
+
     def open
       unless @@opened_streams[@device_id]?
         if @input
@@ -67,14 +70,23 @@ module PortMidi
 
     def close
       if @@opened_streams[@device_id]?
-        LibPortMidi.close(@stream)
+        check_error LibPortMidi.close(@stream)
         @opened = false
         @@opened_streams.delete @device_id
         @stream.value = nil
       end
     end
 
-    def write(bytes)
+    def write(messages : Array(Int32))
+      return if messages.size == 0
+      buffer = Array(LibPortMidi::PmEvent).new(messages.size) do |i|
+        pmevent = LibPortMidi::PmEvent.new
+        pmevent.timestamp = 0
+        pmevent.message = messages[i]
+        pmevent
+      end
+      p buffer
+      check_error LibPortMidi.write(@stream, buffer, buffer.size)
     end
 
     def read
@@ -88,10 +100,17 @@ end
 PortMidi.start
 d_in = PortMidi.get_all_midi_devices.select { |d| d.input }[0]
 d_out = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
+#d_out.write(note_on(56,100), note_off(56,0))
+#PortMidi.open(d_out.device_id)
+#PortMidi.write(d_out.device_id, note_on(56, 100), note_off(56),
+#PortMidi.read()
 d_in.open
 d_out.open
 p d_in
 p d_out
+d_out.write([note_on(56), note_on(77)])
+sleep(3)
+d_out.write([note_off(56), note_off(77)])
 d_in.close
 d_out.close
 
