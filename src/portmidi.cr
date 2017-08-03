@@ -92,13 +92,12 @@ module PortMidi
     def read
       buffer = StaticArray(LibPortMidi::PmEvent, 1024).new(LibPortMidi::PmEvent.new)
       # read() returns the number of events read
-      # OR a negative value (representing a PmError enum value)
+      # OR a negative integer (representing a PmError enum value)
       events_read = LibPortMidi.read(@stream, buffer, buffer.size)
       check_error LibPortMidi::PmError.new(events_read) if events_read < 0
-      messages = Array(MidiMessage).new(events_read.to_i32) do |i|
+      Array(MidiMessage).new(events_read.to_i32) do |i|
         MidiMessage.from_i32(buffer[i].message)
       end
-      messages
     end
 
     def listen(callback)
@@ -107,26 +106,40 @@ module PortMidi
 end
 
 PortMidi.start
-# get the devices
-d_in = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
-d_out = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
-# open them
-d_in.open
-d_out.open
-# log them
-p d_in
-p d_out
-# write midi out
-d_out.write([note_on(56), note_on(77)])
-sleep(3)
-d_out.write([note_off(56), note_off(77)])
-# get midi in
-messages = d_in.read
-p messages
-# close them
-d_in.close
-d_out.close
-
-# p PortMidi.get_all_midi_devices.select {|d| d.input }
-# p PortMidi.get_all_midi_devices.select {|d| d.name.match /2/}
+# # get the devices
+# d_in = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
+# d_out = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
+# # open them
+# d_in.open
+# d_out.open
+# # log them
+# p d_in
+# p d_out
+# # write midi out
+# d_out.write([note_on(56), note_on(77)])
+# sleep(3)
+# d_out.write([note_off(56), note_off(77)])
+# # get midi in
+# messages = d_in.read
+# p messages
+# # close them
+# d_in.close
+# d_out.close
+#
+# d_in0 = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
+# d_in1 = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
+# d_out0 = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
+# d_out1 = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
+# # open them
+# d_in0.open
+# d_in1.open
+# d_out0.open
+# d_out1.open
+# 
+# # close them
+# d_in0.close
+# d_in1.close
+# d_out0.close
+# d_out1.close
+# 
 PortMidi.stop
