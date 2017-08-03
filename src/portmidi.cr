@@ -20,14 +20,18 @@ module PortMidi
     end
   end
 
+  # this returns the PmDeviceInfo struct from the PortMidi c LibPortMidi
+  # the enduser needn't use use this ever (they should call get_all_midi_devices)
+  private def get_midi_device_info(device_id)
+    device_info_p = LibPortMidi.get_device_info(device_id)
+    raise PortMidiException.new("Invalid device id, cannot retrieve device info") unless device_info_p
+    device_info_p.value
+  end
+
   def get_all_midi_devices
-    devices = Array(MidiDevice).new
-    device_info : LibPortMidi::PmDeviceInfo
-    LibPortMidi.count_devices.times do |device_id|
-      device_info = LibPortMidi.get_device_info(device_id).value
-      devices << MidiDevice.new(device_id, device_info) if device_info != 0
+    Array(MidiDevice).new(LibPortMidi.count_devices) do |device_id|
+      MidiDevice.new device_id, get_midi_device_info(device_id)
     end
-    devices
   end
 
   # this class is the same as the PmDeviceInfo struct
@@ -39,7 +43,7 @@ module PortMidi
     @input : Bool
     @output : Bool
 
-    getter :input, :output, :opened, :name, :device_id
+    getter :input, :output, :name, :device_id
 
     def initialize(device_id : Int32, device_info : LibPortMidi::PmDeviceInfo)
       @device_id = device_id
@@ -48,6 +52,12 @@ module PortMidi
       @output = device_info.output != 0
       @opened = device_info.opened != 0
       @stream = uninitialized LibPortMidi::PortMidiStream*
+    end
+
+    # writting the opened getter so it can reflect updates accurately
+    def opened
+      device_info = get_midi_device_info @device_id
+      @opened = device_info.open != 0
     end
 
     private def check_error(error : LibPortMidi::PmError)
@@ -106,25 +116,27 @@ module PortMidi
 end
 
 PortMidi.start
-# # get the devices
-# d_in = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
-# d_out = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
-# # open them
-# d_in.open
-# d_out.open
-# # log them
-# p d_in
-# p d_out
-# # write midi out
-# d_out.write([note_on(56), note_on(77)])
-# sleep(3)
-# d_out.write([note_off(56), note_off(77)])
-# # get midi in
-# messages = d_in.read
-# p messages
-# # close them
-# d_in.close
-# d_out.close
+# get the devices
+d_in = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
+d_out = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
+# open them
+d_in.open
+d_out.open
+# log them
+p d_in
+p d_out
+# write midi out
+d_out.write([note_on(56), note_on(77)])
+sleep(3)
+d_out.write([note_off(56), note_off(77)])
+# get midi in
+messages = d_in.read
+p messages
+p "d_out.opened: #{d_out.opened}"
+# close them
+d_in.close
+d_out.close
+p "d_out.close(); d_out.opened: #{d_out.opened}"
 #
 # d_in0 = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
 # d_in1 = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
