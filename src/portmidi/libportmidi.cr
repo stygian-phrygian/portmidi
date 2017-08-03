@@ -3,7 +3,6 @@ require "lib_c"
 @[Link("portmidi")]
 lib LibPortMidi
   alias Int = LibC::Int
-  alias Long = LibC::Long
   #
   alias PortMidiStream = Void
   alias PmDeviceID = Int
@@ -97,23 +96,23 @@ lib LibPortMidi
   fun open_input = Pm_OpenInput(stream : PortMidiStream**,
                                 inputDevice : PmDeviceID,
                                 inputDriverInfo : Void*,
-                                bufferSize : Long,
+                                bufferSize : Int32,
                                 time_proc : PmTimeProcPtr,
                                 time_info : Void*) : PmError
   fun open_output = Pm_OpenOutput(stream : PortMidiStream**,
                                   outputDevice : PmDeviceID,
                                   outputDriverInfo : Void*,
-                                  bufferSize : Long,
+                                  bufferSize : Int32,
                                   time_proc : PmTimeProcPtr,
                                   time_info : Void*,
-                                  latency : Long) : PmError
+                                  latency : Int32) : PmError
   fun set_filter = Pm_SetFilter(stream : PortMidiStream*, filter : Int32) : PmError
   fun set_channel_mask = Pm_setChannelMask(stream : PortMidiStream*, mask : Int) : PmError
   #
   fun abort = Pm_Abort(stream : PortMidiStream*) : PmError
   fun close = Pm_Close(stream : PortMidiStream*) : PmError
   fun synchronize = Pm_Synchronize(stream : PortMidiStream*) : PmError
-  fun read = Pm_Read(stream : PortMidiStream*, buffer : PmEvent*, length : Int32) : PmError
+  fun read = Pm_Read(stream : PortMidiStream*, buffer : PmEvent*, length : Int32) : Int
   fun poll = Pm_Poll(stream : PortMidiStream*) : PmError
   fun write = Pm_Write(stream : PortMidiStream*, buffer : PmEvent*, length : Int32) : PmError
   fun write_short = Pm_WriteShort(stream : PortMidiStream*, when : PmTimestamp, msg : Int32) : PmError
