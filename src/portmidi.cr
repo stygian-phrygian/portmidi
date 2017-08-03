@@ -77,19 +77,28 @@ module PortMidi
       end
     end
 
-    def write(messages : Array(Int32))
-      return if messages.size == 0
+    # this only writes "Channel Voice Messages" (not SysEx)
+    # see: https://www.midi.org/specifications/item/table-1-summary-of-midi-message
+    def write(messages : Array(MidiMessage))
       buffer = Array(LibPortMidi::PmEvent).new(messages.size) do |i|
-        pmevent = LibPortMidi::PmEvent.new
-        pmevent.timestamp = 0
-        pmevent.message = messages[i]
-        pmevent
+        event = LibPortMidi::PmEvent.new
+        event.timestamp = 0
+        event.message = messages[i].to_i32
+        event
       end
-      p buffer
       check_error LibPortMidi.write(@stream, buffer, buffer.size)
     end
 
     def read
+      buffer = StaticArray(LibPortMidi::PmEvent, 1024).new(LibPortMidi::PmEvent.new)
+      # read() returns the number of events read
+      # OR a negative value (representing a PmError enum value)
+      events_read = LibPortMidi.read(@stream, buffer, buffer.size)
+      check_error LibPortMidi::PmError.new(events_read) if events_read < 0
+      messages = Array(MidiMessage).new(events_read.to_i32) do |i|
+        MidiMessage.from_i32(buffer[i].message)
+      end
+      messages
     end
 
     def listen(callback)
@@ -98,19 +107,23 @@ module PortMidi
 end
 
 PortMidi.start
-d_in = PortMidi.get_all_midi_devices.select { |d| d.input }[0]
+# get the devices
+d_in = PortMidi.get_all_midi_devices.select { |d| d.input && d.name.match /2/ }[0]
 d_out = PortMidi.get_all_midi_devices.select { |d| d.output }[0]
-#d_out.write(note_on(56,100), note_off(56,0))
-#PortMidi.open(d_out.device_id)
-#PortMidi.write(d_out.device_id, note_on(56, 100), note_off(56),
-#PortMidi.read()
+# open them
 d_in.open
 d_out.open
+# log them
 p d_in
 p d_out
+# write midi out
 d_out.write([note_on(56), note_on(77)])
 sleep(3)
 d_out.write([note_off(56), note_off(77)])
+# get midi in
+messages = d_in.read
+p messages
+# close them
 d_in.close
 d_out.close
 
