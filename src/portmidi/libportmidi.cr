@@ -10,6 +10,10 @@ lib LibPortMidi
   alias PmTimeProcPtr = (Void* -> PmTimestamp)*
   alias PmMessage = Int32
 
+  # this is a macro in the portmidi.h (not a PmError)
+  # original name is pmNoDevice but it's a constant here to placate crystal
+  PmNoDevice = -1
+
   enum PmError
     PmNoError            =      0
     PmNoData             =      0
@@ -91,7 +95,7 @@ lib LibPortMidi
   fun get_error_text = Pm_GetErrorText(errnum : PmError) : LibC::Char*
   fun count_devices = Pm_CountDevices : Int
   fun get_default_input_device_id = Pm_GetDefaultInputDeviceID : PmDeviceID
-  fun get_default_ouput_device_id = Pm_GetDefaultOutputDeviceID : PmDeviceID
+  fun get_default_output_device_id = Pm_GetDefaultOutputDeviceID : PmDeviceID
   fun get_device_info = Pm_GetDeviceInfo(id : PmDeviceID) : PmDeviceInfo*
   fun open_input = Pm_OpenInput(stream : PortMidiStream**,
                                 inputDevice : PmDeviceID,

@@ -23,6 +23,20 @@ module PortMidi
     end
   end
 
+  def get_default_midi_input_device_id
+    # result can be a device_id (0-N) or "pmNoDevice" == -1
+    device_id = LibPortMidi.get_default_input_device_id
+    raise PortMidiException.new "No default input device found." if device_id == LibPortMidi::PmNoDevice
+    device_id
+  end
+
+  def get_default_midi_output_device_id
+    # result can be a device_id (0-N) or "pmNoDevice" == -1
+    device_id = LibPortMidi.get_default_output_device_id
+    raise PortMidiException.new "No default output device found." if device_id == LibPortMidi::PmNoDevice
+    device_id
+  end
+
   private abstract class MidiStream
     getter :device_id, :stream
 
@@ -61,16 +75,35 @@ module PortMidi
     def close
       PortMidi.check_error LibPortMidi.close @stream
     end
+
+    def poll
+      # result is 0 (false) ,1 (true), or PmError
+      result = LibPortMidi.poll(@stream)
+      return result == 1 if result >=0
+      PortMidi.check_error result
+    end
+
+    def abort
+      PortMidi.check_error LibPortMidi.abort @stream
+    end
+
+    def set_filter(filter : Int32)
+      PortMidi.check_error LibPortMidi.set_filter(@stream, filter)
+    end
+
+    def set_channel_mask(mask : Int32)
+      PortMidi.check_error LibPortMidi.set_channel_mask(@stream, mask)
+    end
   end
 
-  private class MidiInputStream < MidiStream
+  class MidiInputStream < MidiStream
     def initialize(@device_id : Int32)
       super
       PortMidi.check_error LibPortMidi.open_input(out @stream, @device_id, nil, 512, nil, nil)
     end
   end
 
-  private class MidiOutputStream < MidiStream
+  class MidiOutputStream < MidiStream
     def initialize(@device_id : Int32)
       super
       PortMidi.check_error LibPortMidi.open_output(out @stream, @device_id, nil, 512, nil, nil, 0)
@@ -122,7 +155,8 @@ end
 PortMidi.start
 # get the midi streams (and open them)
 d_in = PortMidi.get_all_midi_device_info.select { |d| d.input && d.name.match /2/ }[0].to_stream
-d_out = PortMidi.get_all_midi_device_info.select { |d| d.output }[0].to_stream
+# d_out = PortMidi.get_all_midi_device_info.select { |d| d.output }[0].to_stream
+d_out = PortMidi::MidiOutputStream.new PortMidi.get_default_midi_output_device_id
 # log them
 p d_in
 p d_out
