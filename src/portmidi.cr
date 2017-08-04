@@ -102,6 +102,7 @@ module PortMidi
     # this only writes short messages ie."Channel Voice Messages" (not SysEx)
     # see: https://www.midi.org/specifications/item/table-1-summary-of-midi-message
     def write(messages : Array(MidiShortMessage))
+      # convert the MidiShortMessages into PmEvents that portmidi understands
       buffer = Array(LibPortMidi::PmEvent).new(messages.size) do |i|
         event = LibPortMidi::PmEvent.new
         event.timestamp = 0
@@ -109,6 +110,14 @@ module PortMidi
         event
       end
       PortMidi.check_error LibPortMidi.write(@stream, buffer, buffer.size)
+    end
+
+    def write_short(message : MidiShortMessage)
+      check_error LibPortMidi.write_short(@stream, 0, message.to_i32)
+    end
+
+    def write_sysex
+      #TODO
     end
 
   end
@@ -147,9 +156,14 @@ module PortMidi
       device_info_p.value
     end
 
-    def to_stream
+    def to_input_stream
       return MidiInputStream.new @device_id if @input
-      return MidiOutputStream.new @device_id
+      raise PortMidiException.new "Cannot create a MidiInputStream from this device"
+    end
+
+    def to_output_stream
+      return MidiOutputStream.new @device_id if @output
+      raise PortMidiException.new "Cannot create a MidiOutputStream from this device"
     end
   end
 end
@@ -157,7 +171,8 @@ end
 # turnon PortMidi
 PortMidi.start
 # get the midi streams (and open them)
-d_in = PortMidi.get_all_midi_device_info.select { |d| d.input && d.name.match /2/ }[0].to_stream
+d_in = 
+  PortMidi.get_all_midi_device_info.select { |d| d.input && d.name.match /2/ }[0].to_input_stream
 # d_out = PortMidi.get_all_midi_device_info.select { |d| d.output }[0].to_stream
 d_out = PortMidi::MidiOutputStream.new PortMidi.get_default_midi_output_device_id
 # log them
@@ -168,8 +183,7 @@ d_out.write([note_on(56), note_on(77)])
 sleep(3)
 d_out.write([note_off(56), note_off(77)])
 # get midi in
-messages = d_in.read
-p messages
+p d_in.read if d_in.poll
 # close them
 d_in.close
 d_out.close
