@@ -45,16 +45,19 @@ module PortMidi
       # opening the input/output stream happens here in the subclasses
     end
 
-    # this only writes "Channel Voice Messages" (not SysEx)
-    # see: https://www.midi.org/specifications/item/table-1-summary-of-midi-message
-    def write(messages : Array(MidiMessage))
-      buffer = Array(LibPortMidi::PmEvent).new(messages.size) do |i|
-        event = LibPortMidi::PmEvent.new
-        event.timestamp = 0
-        event.message = messages[i].to_i32
-        event
-      end
-      PortMidi.check_error LibPortMidi.write(@stream, buffer, buffer.size)
+    def close
+      PortMidi.check_error LibPortMidi.close @stream
+    end
+
+    def abort
+      PortMidi.check_error LibPortMidi.abort @stream
+    end
+  end
+
+  class MidiInputStream < MidiStream
+    def initialize(@device_id : Int32)
+      super
+      PortMidi.check_error LibPortMidi.open_input(out @stream, @device_id, nil, 512, nil, nil)
     end
 
     def read
@@ -63,28 +66,18 @@ module PortMidi
       # OR a negative integer (representing a PmError enum value)
       events_read = LibPortMidi.read(@stream, buffer, buffer.size)
       PortMidi.check_error LibPortMidi::PmError.new(events_read) if events_read < 0
-      Array(MidiMessage).new(events_read.to_i32) do |i|
-        MidiMessage.from_i32(buffer[i].message)
+      Array(MidiShortMessage).new(events_read.to_i32) do |i|
+        MidiShortMessage.from_i32(buffer[i].message)
       end
     end
 
-    def listen(callback)
-      # TODO:
-    end
-
-    def close
-      PortMidi.check_error LibPortMidi.close @stream
-    end
-
+    # calling poll after your stream is closed will crash it
     def poll
       # result is 0 (false) ,1 (true), or PmError
       result = LibPortMidi.poll(@stream)
-      return result == 1 if result >=0
+      return true if result.pm_got_data?
+      return false if result.pm_no_data?
       PortMidi.check_error result
-    end
-
-    def abort
-      PortMidi.check_error LibPortMidi.abort @stream
     end
 
     def set_filter(filter : Int32)
@@ -94,12 +87,9 @@ module PortMidi
     def set_channel_mask(mask : Int32)
       PortMidi.check_error LibPortMidi.set_channel_mask(@stream, mask)
     end
-  end
 
-  class MidiInputStream < MidiStream
-    def initialize(@device_id : Int32)
-      super
-      PortMidi.check_error LibPortMidi.open_input(out @stream, @device_id, nil, 512, nil, nil)
+    def listen(callback)
+      # TODO:
     end
   end
 
@@ -108,6 +98,19 @@ module PortMidi
       super
       PortMidi.check_error LibPortMidi.open_output(out @stream, @device_id, nil, 512, nil, nil, 0)
     end
+
+    # this only writes short messages ie."Channel Voice Messages" (not SysEx)
+    # see: https://www.midi.org/specifications/item/table-1-summary-of-midi-message
+    def write(messages : Array(MidiShortMessage))
+      buffer = Array(LibPortMidi::PmEvent).new(messages.size) do |i|
+        event = LibPortMidi::PmEvent.new
+        event.timestamp = 0
+        event.message = messages[i].to_i32
+        event
+      end
+      PortMidi.check_error LibPortMidi.write(@stream, buffer, buffer.size)
+    end
+
   end
 
   class PortMidiException < Exception
@@ -115,7 +118,7 @@ module PortMidi
 
   # this class is the same as the PmDeviceInfo struct
   # with the addition of the device id for added convenience
-  private class MidiDeviceInfo
+  class MidiDeviceInfo
     getter :device_id, :name, :input, :output
 
     @input : Bool
