@@ -2,6 +2,20 @@
 class MidiMessage
 end
 
+enum MidiRealTimeMessage
+  Clock = 0xF8
+  Start = 0xFA
+  Continue = 0xFB
+  Stop = 0xFC
+  ActiveSensing = 0xFE
+  Reset = 0xFF
+end
+
+class MidiSysexMessage < MidiMessage
+  def initialize(@bytes: Array(UInt8))
+  end
+end
+
 class MidiShortMessage < MidiMessage
   getter :status, :data1, :data2
 
@@ -22,17 +36,40 @@ class MidiShortMessage < MidiMessage
       (@status & 0x000000FF)
   end
 
-  def note_on?
-    0x9 == ((@status >> 4) & 0x0000000F)
+  private def get_status_without_channel
+    (@status >> 4) & 0x0000000F
   end
 
   def note_off?
-    0x8 == ((@status >> 4) & 0x0000000F) ||
-      (note_on? && @data2 == 0)
+    0x8 == get_status_without_channel || (note_on? && @data2 == 0)
+  end
+
+  def note_on?
+    0x9 == get_status_without_channel
+  end
+
+  def polyphonic_key_pressure?
+    0xA == get_status_without_channel
   end
 
   def cc?
-    0xA == ((@status >> 4) & 0x0000000F)
+    0xB == get_status_without_channel
+  end
+
+  def program_change?
+    0xC == get_status_without_channel
+  end
+
+  def channel_pressure?
+    0xD == get_status_without_channel
+  end
+
+  def pitch_bend?
+    0xE == get_status_without_channel
+  end
+
+  def aftertouch?
+    channel_pressure?
   end
 
   def channel
