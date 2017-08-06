@@ -11,15 +11,15 @@ module PortMidi
     check_error LibPortMidi.terminate
   end
 
-  def get_all_midi_device_info
-    Array(MidiDeviceInfo).new(LibPortMidi.count_devices) do |device_id|
-      MidiDeviceInfo.new device_id
-    end
-  end
-
   def check_error(error : LibPortMidi::PmError)
     unless error == LibPortMidi::PmError::PmNoError
       raise PortMidiException.new String.new(LibPortMidi.get_error_text(error))
+    end
+  end
+
+  def get_all_midi_device_info
+    Array(MidiDeviceInfo).new(LibPortMidi.count_devices) do |device_id|
+      MidiDeviceInfo.new device_id
     end
   end
 
@@ -45,12 +45,20 @@ module PortMidi
       # opening the input/output stream happens here in the subclasses
     end
 
+    private def check_open
+      raise PortMidiException.new "Cannot access a closed stream" unless @opened
+    end
+
     def close
+      check_open
       PortMidi.check_error LibPortMidi.close @stream
+      @opened = false
     end
 
     def abort
+      check_open
       PortMidi.check_error LibPortMidi.abort @stream
+      @opened = false
     end
   end
 
@@ -58,9 +66,12 @@ module PortMidi
     def initialize(@device_id : Int32)
       super
       PortMidi.check_error LibPortMidi.open_input(out @stream, @device_id, nil, 512, nil, nil)
+      @opened = true
     end
 
+    # read midi short messages
     def read
+      check_open
       buffer = StaticArray(LibPortMidi::PmEvent, 1024).new(LibPortMidi::PmEvent.new)
       # read() returns the number of events read
       # OR a negative integer (representing a PmError enum value)
@@ -73,6 +84,7 @@ module PortMidi
 
     # calling poll after your stream is closed will crash it
     def poll
+      check_open
       # result is 0 (false) ,1 (true), or PmError
       result = LibPortMidi.poll(@stream)
       return true if result.pm_got_data?
@@ -81,14 +93,17 @@ module PortMidi
     end
 
     def set_filter(filter : Int32)
+      check_open
       PortMidi.check_error LibPortMidi.set_filter(@stream, filter)
     end
 
     def set_channel_mask(mask : Int32)
+      check_open
       PortMidi.check_error LibPortMidi.set_channel_mask(@stream, mask)
     end
 
     def listen(callback)
+      check_open
       # TODO:
     end
   end
@@ -97,11 +112,13 @@ module PortMidi
     def initialize(@device_id : Int32)
       super
       PortMidi.check_error LibPortMidi.open_output(out @stream, @device_id, nil, 512, nil, nil, 0)
+      @opened = true
     end
 
     # this only writes short messages ie."Channel Voice Messages" (not SysEx)
     # see: https://www.midi.org/specifications/item/table-1-summary-of-midi-message
     def write(messages : Array(MidiShortMessage))
+      check_open
       # convert the MidiShortMessages into PmEvents that portmidi understands
       buffer = Array(LibPortMidi::PmEvent).new(messages.size) do |i|
         event = LibPortMidi::PmEvent.new
@@ -113,13 +130,14 @@ module PortMidi
     end
 
     def write_short(message : MidiShortMessage)
+      check_open
       check_error LibPortMidi.write_short(@stream, 0, message.to_i32)
     end
 
-    def write_sysex
-      #TODO
+    def write_sysex(bytes : Array(UInt8))
+      check_open
+      check_error LibPortMidi.write_sysex(@stream, 0, bytes)
     end
-
   end
 
   class PortMidiException < Exception
@@ -171,7 +189,7 @@ end
 # turnon PortMidi
 PortMidi.start
 # get the midi streams (and open them)
-d_in = 
+d_in =
   PortMidi.get_all_midi_device_info.select { |d| d.input && d.name.match /2/ }[0].to_input_stream
 # d_out = PortMidi.get_all_midi_device_info.select { |d| d.output }[0].to_stream
 d_out = PortMidi::MidiOutputStream.new PortMidi.get_default_midi_output_device_id
@@ -187,5 +205,11 @@ p d_in.read if d_in.poll
 # close them
 d_in.close
 d_out.close
+begin
+  d_in.poll
+rescue e
+  p e.message
+  p "blah"
+end
 # turn off PortMidi
 PortMidi.stop
