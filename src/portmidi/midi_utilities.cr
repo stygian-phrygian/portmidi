@@ -1,25 +1,22 @@
-
-class MidiMessage
-end
-
-enum MidiRealTimeMessage
-  Clock = 0xF8
-  Start = 0xFA
-  Continue = 0xFB
-  Stop = 0xFC
+enum MidiRealTimeMessage : UInt8
+  Clock         = 0xF8
+  Undefined     = 0xF9 | 0xFD
+  Start         = 0xFA
+  Continue      = 0xFB
+  Stop          = 0xFC
   ActiveSensing = 0xFE
-  Reset = 0xFF
+  Reset         = 0xFF
 end
 
-class MidiSysexMessage < MidiMessage
-  def initialize(@bytes: Array(UInt8))
+class MidiSysexMessage
+  def initialize(@bytes : Array(UInt8))
   end
 end
 
-class MidiShortMessage < MidiMessage
+class MidiShortMessage
   getter :status, :data1, :data2
 
-  def initialize(@status : Int32, @data1 : Int32, @data2 : Int32)
+  def initialize(@status : Int32, @data1 : Int32, @data2 : Int32 = 0)
   end
 
   # parse the Int32 midi message which portmidi gives us
@@ -93,5 +90,5 @@ end
 
 # for use in LibPortMidi.set_channel_mask
 def channel_mask(*channels : Int32) : Int16
-  channels.select {|i| i >= 0 && i < 16}.map {|n| (1 << n)}.sum
+  channels.select { |i| i >= 0 && i < 16 }.map { |n| (1 << n) }.sum
 end

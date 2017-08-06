@@ -70,6 +70,7 @@ module PortMidi
     end
 
     # read midi short messages
+    # TODO: make this method work with MidiMessage instead
     def read
       check_open
       buffer = StaticArray(LibPortMidi::PmEvent, 1024).new(LibPortMidi::PmEvent.new)
@@ -77,7 +78,7 @@ module PortMidi
       # OR a negative integer (representing a PmError enum value)
       events_read = LibPortMidi.read(@stream, buffer, buffer.size)
       PortMidi.check_error LibPortMidi::PmError.new(events_read) if events_read < 0
-      Array(MidiShortMessage).new(events_read.to_i32) do |i|
+      Array(MidiShortMessage).new(events_read) do |i|
         MidiShortMessage.from_i32(buffer[i].message)
       end
     end
@@ -115,6 +116,7 @@ module PortMidi
       @opened = true
     end
 
+    # TODO: make this method work for all kinds of midi message
     # this only writes short messages ie."Channel Voice Messages" (not SysEx)
     # see: https://www.midi.org/specifications/item/table-1-summary-of-midi-message
     def write(messages : Array(MidiShortMessage))
@@ -129,14 +131,20 @@ module PortMidi
       PortMidi.check_error LibPortMidi.write(@stream, buffer, buffer.size)
     end
 
+    def write_bytes(bytes : Array(UInt8))
+    end
+
     def write_short(message : MidiShortMessage)
       check_open
       check_error LibPortMidi.write_short(@stream, 0, message.to_i32)
     end
 
-    def write_sysex(bytes : Array(UInt8))
+    # message is just a sequence of bytes
+    # message had better start with 0xFF and end with 0xF7
+    # also the bytes between those delimiters can only be from 0x00 - 0x7F
+    def write_sysex(message : Array(UInt8))
       check_open
-      check_error LibPortMidi.write_sysex(@stream, 0, bytes)
+      check_error LibPortMidi.write_sysex(@stream, 0, message)
     end
   end
 
@@ -205,11 +213,5 @@ p d_in.read if d_in.poll
 # close them
 d_in.close
 d_out.close
-begin
-  d_in.poll
-rescue e
-  p e.message
-  p "blah"
-end
 # turn off PortMidi
 PortMidi.stop
