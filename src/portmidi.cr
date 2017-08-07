@@ -127,7 +127,7 @@ module PortMidi
 
     # message is just a sequence of bytes
     # message must start with 0xFF and end with 0xF7
-    # also the bytes between those delimiters can only be from 0x00 - 0x7F
+    # the bytes between those delimiters can only be from 0x00 - 0x7F
     def write_sysex(message : Array(UInt8))
       check_open
       check_error LibPortMidi.write_sysex(@stream, 0, message)
@@ -140,7 +140,7 @@ module PortMidi
   # this class is the same as the PmDeviceInfo struct
   # with the addition of the device id for added convenience
   class MidiDeviceInfo
-    getter :device_id, :name, :input, :output
+    getter :device_id, :name, :input, :output, :interf
 
     @input : Bool
     @output : Bool
@@ -148,9 +148,10 @@ module PortMidi
     def initialize(device_id : Int32)
       device_info = get_pm_midi_device_info device_id
       @device_id = device_id
-      @name = String.new(device_info.name)
+      @name = String.new device_info.name
       @input = device_info.input != 0
       @output = device_info.output != 0
+      @interf = String.new device_info.interf
       # @opened is not immutable
       # hence we need a getter method which queries LibPortMidi with each access
       # to avoid the possibility of multiple objects refering to the same device_id
