@@ -1,5 +1,7 @@
 # convenience methods for creating midi (short) messages
 # require this file then include MidiUtilities
+require "../portmidi.cr"
+
 module MidiUtilities
   extend self
 
