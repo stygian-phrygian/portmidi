@@ -114,6 +114,7 @@ module PortMidi
       @opened = true
     end
 
+    # writes an array of MidiEvent
     def write(events : Array(MidiEvent))
       check_open
       buffer = Array(LibPortMidi::PmEvent).new(events.size) do |i|
@@ -125,7 +126,12 @@ module PortMidi
       PortMidi.check_error LibPortMidi.write(@stream, buffer, buffer.size)
     end
 
-    # message is just a sequence of bytes
+    # writes midi short messages
+    def write_short(status : Int32, data1 : Int32, data2 : Int32)
+      write [MidiEvent.new status, data1, data2]
+    end
+
+    # writes sysex message from an array of UInt8
     # message must start with 0xFF and end with 0xF7
     # the bytes between those delimiters can only be from 0x00 - 0x7F
     def write_sysex(message : Array(UInt8))
