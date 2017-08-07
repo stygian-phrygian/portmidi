@@ -43,6 +43,7 @@ module PortMidi
     def initialize(@device_id : Int32)
       @stream = uninitialized LibPortMidi::PortMidiStream*
       # opening the input/output stream happens here in the subclasses
+      # if the stream is opened, @opened is set to true
     end
 
     private def check_open
@@ -69,8 +70,6 @@ module PortMidi
       @opened = true
     end
 
-    # read midi short messages
-    # TODO: make this method work with MidiMessage instead
     def read
       check_open
       buffer = StaticArray(LibPortMidi::PmEvent, 1024).new(LibPortMidi::PmEvent.new)
@@ -78,12 +77,11 @@ module PortMidi
       # OR a negative integer (representing a PmError enum value)
       events_read = LibPortMidi.read(@stream, buffer, buffer.size)
       PortMidi.check_error LibPortMidi::PmError.new(events_read) if events_read < 0
-      Array(MidiShortMessage).new(events_read) do |i|
-        MidiShortMessage.from_i32(buffer[i].message)
+      Array(MidiEvent).new(events_read) do |i|
+        MidiEvent.from_PmEvent(buffer[i])
       end
     end
 
-    # calling poll after your stream is closed will crash it
     def poll
       check_open
       # result is 0 (false) ,1 (true), or PmError
@@ -116,31 +114,19 @@ module PortMidi
       @opened = true
     end
 
-    # TODO: make this method work for all kinds of midi message
-    # this only writes short messages ie."Channel Voice Messages" (not SysEx)
-    # see: https://www.midi.org/specifications/item/table-1-summary-of-midi-message
-    def write(messages : Array(MidiShortMessage))
+    def write(events : Array(MidiEvent))
       check_open
-      # convert the MidiShortMessages into PmEvents that portmidi understands
-      buffer = Array(LibPortMidi::PmEvent).new(messages.size) do |i|
+      buffer = Array(LibPortMidi::PmEvent).new(events.size) do |i|
         event = LibPortMidi::PmEvent.new
-        event.timestamp = 0
-        event.message = messages[i].to_i32
+        event.timestamp = events[i].timestamp
+        event.message = events[i].to_i32
         event
       end
       PortMidi.check_error LibPortMidi.write(@stream, buffer, buffer.size)
     end
 
-    def write_bytes(bytes : Array(UInt8))
-    end
-
-    def write_short(message : MidiShortMessage)
-      check_open
-      check_error LibPortMidi.write_short(@stream, 0, message.to_i32)
-    end
-
     # message is just a sequence of bytes
-    # message had better start with 0xFF and end with 0xF7
+    # message must start with 0xFF and end with 0xF7
     # also the bytes between those delimiters can only be from 0x00 - 0x7F
     def write_sysex(message : Array(UInt8))
       check_open
@@ -190,6 +176,82 @@ module PortMidi
     def to_output_stream
       return MidiOutputStream.new @device_id if @output
       raise PortMidiException.new "Cannot create a MidiOutputStream from this device"
+    end
+  end
+
+  # this is essentially a translation of the PortMidi PmEvent struct
+  class MidiEvent
+    getter :status, :data1, :data2, :data3, :timestamp
+
+    def initialize(@status : Int32,
+                   @data1 : Int32,
+                   @data2 : Int32 = 0,
+                   @data3 : Int32 = 0, # for use in sysex messages
+                   @timestamp : Int32 = 0                 )
+    end
+
+    # alias for status
+    def data0
+      @status
+    end
+
+    # creates a new MidiEvent from a PortMidi PmEvent
+    def self.from_PmEvent(e : LibPortMidi::PmEvent)
+      m = e.message
+      self.new m & 0x000000FF,
+        (m >> 8) & 0x000000FF,
+        (m >> 16) & 0x000000FF,
+        (m >> 24) & 0x000000FF,
+        e.timestamp
+    end
+
+    # translates self's constituent bytes into an Int32 value
+    # compatible with PortMidi's PmEvent.message order and size
+    def to_i32 : Int32
+      ((@data3 << 24) & 0xFF000000) |
+        ((@data2 << 16) & 0x00FF0000) |
+        ((@data1 << 8) & 0x0000FF00) |
+        (@status & 0x000000FF)
+    end
+
+    private def get_status_without_channel
+      (@status >> 4) & 0x0000000F
+    end
+
+    def note_off?
+      0x8 == get_status_without_channel || (note_on? && @data2 == 0)
+    end
+
+    def note_on?
+      0x9 == get_status_without_channel
+    end
+
+    def polyphonic_key_pressure?
+      0xA == get_status_without_channel
+    end
+
+    def cc?
+      0xB == get_status_without_channel
+    end
+
+    def program_change?
+      0xC == get_status_without_channel
+    end
+
+    def channel_pressure?
+      0xD == get_status_without_channel
+    end
+
+    def pitch_bend?
+      0xE == get_status_without_channel
+    end
+
+    def aftertouch?
+      channel_pressure?
+    end
+
+    def channel
+      @status & 0x0F
     end
   end
 end
