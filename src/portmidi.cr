@@ -161,10 +161,7 @@ module PortMidi
       @input = device_info.input != 0
       @output = device_info.output != 0
       @interf = String.new device_info.interf
-      # @opened is not immutable
-      # hence we need a getter method which queries LibPortMidi with each access
-      # to avoid the possibility of multiple objects refering to the same device_id
-      # having a contradictory @opened instance variable between them
+      # @opened (see getter method)
     end
 
     def to_s(io : IO)
@@ -172,6 +169,11 @@ module PortMidi
       io << "#{@device_id} [output]: #{@interf}, #{@name}" if @output
     end
 
+    # the "opened" struct variable (of LibPortMidi::PmDeviceInfo)
+    # may vary with calls to PortMidi (whether or not streams are opened)
+    # hence we need a getter method which queries LibPortMidi with each access
+    # to avoid the possibility of multiple objects refering to the same device_id
+    # having a contradictory @opened instance variable among them
     def opened
       device_info = get_pm_midi_device_info @device_info
       @opened = device_info.opened != 0
@@ -222,7 +224,7 @@ module PortMidi
       when (0xE0...0xF0)
         io << "Pitch Bend: #{@status}, #{@data1}, #{@data2}"
       else
-        # this handles sysex, and realtime messages
+        # this handles sysex and realtime messages
         io << "#{@status}, #{@data1}, #{@data2}, #{@data3}"
       end
     end
