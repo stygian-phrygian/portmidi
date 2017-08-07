@@ -1,4 +1,4 @@
-require "./portmidi/*"
+require "./portmidi/libportmidi.cr"
 
 module PortMidi
   extend self
@@ -100,11 +100,6 @@ module PortMidi
       check_open
       PortMidi.check_error LibPortMidi.set_channel_mask(@stream, mask)
     end
-
-    def listen(callback)
-      check_open
-      # TODO:
-    end
   end
 
   class MidiOutputStream < MidiStream
@@ -194,7 +189,12 @@ module PortMidi
                    @data1 : Int32,
                    @data2 : Int32 = 0,
                    @data3 : Int32 = 0, # for use in sysex messages
-                   @timestamp : Int32 = 0                 )
+                   @timestamp : Int32 = 0                   )
+    end
+
+    def to_s(io : IO)
+      # TODO: do it
+      io << "#{@status} #{@data1} #{@data2}" if status >= 0x80
     end
 
     # alias for status
@@ -262,25 +262,3 @@ module PortMidi
     end
   end
 end
-
-# turnon PortMidi
-PortMidi.start
-# get the midi streams (and open them)
-d_in =
-  PortMidi.get_all_midi_device_info.select { |d| d.input && d.name.match /2/ }[0].to_input_stream
-# d_out = PortMidi.get_all_midi_device_info.select { |d| d.output }[0].to_stream
-d_out = PortMidi::MidiOutputStream.new PortMidi.get_default_midi_output_device_id
-# log them
-p d_in
-p d_out
-# write midi out
-d_out.write([note_on(56), note_on(77)])
-sleep(3)
-d_out.write([note_off(56), note_off(77)])
-# get midi in
-p d_in.read if d_in.poll
-# close them
-d_in.close
-d_out.close
-# turn off PortMidi
-PortMidi.stop
