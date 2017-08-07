@@ -38,7 +38,6 @@ lib LibPortMidi
     opened : Int
   end
 
-  #@[Packed]
   struct PmEvent
     message : PmMessage
     timestamp : PmTimestamp

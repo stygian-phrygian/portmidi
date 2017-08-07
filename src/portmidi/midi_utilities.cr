@@ -1,6 +1,8 @@
 # convenience methods for creating midi (short) messages
+# require this file then include MidiUtilities
 module MidiUtilities
   extend self
+
   def note_on(note, velocity = 90, channel = 0)
     PortMidi::MidiEvent.new 0x90 + channel, note, velocity
   end

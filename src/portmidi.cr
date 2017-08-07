@@ -166,6 +166,7 @@ module PortMidi
       # to avoid the possibility of multiple objects refering to the same device_id
       # having a contradictory @opened instance variable between them
     end
+
     def to_s(io : IO)
       io << "#{@device_id} [input ]: #{@interf}, #{@name}" if @input
       io << "#{@device_id} [output]: #{@interf}, #{@name}" if @output
