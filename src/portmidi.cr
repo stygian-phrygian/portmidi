@@ -23,6 +23,10 @@ module PortMidi
     end
   end
 
+  def get_midi_device_info(device_id : Int32)
+    MidiDeviceInfo.new device_id
+  end
+
   def get_default_midi_input_device_id
     # result can be a device_id (0-N) or "pmNoDevice" == -1
     device_id = LibPortMidi.get_default_input_device_id
@@ -44,6 +48,10 @@ module PortMidi
       @stream = uninitialized LibPortMidi::PortMidiStream*
       # opening the input/output stream happens here in the subclasses
       # if the stream is opened, @opened is set to true
+    end
+
+    def to_s(io : IO)
+      MidiDeviceInfo.new(@device_id).to_s(io)
     end
 
     private def check_open
@@ -158,6 +166,10 @@ module PortMidi
       # to avoid the possibility of multiple objects refering to the same device_id
       # having a contradictory @opened instance variable between them
     end
+    def to_s(io : IO)
+      io << "#{@device_id} [input ]: #{@interf}, #{@name}" if @input
+      io << "#{@device_id} [output]: #{@interf}, #{@name}" if @output
+    end
 
     def opened
       device_info = get_pm_midi_device_info @device_info
@@ -193,8 +205,25 @@ module PortMidi
     end
 
     def to_s(io : IO)
-      # TODO: do it
-      io << "#{@status} #{@data1} #{@data2}" if status >= 0x80
+      case @status
+      when (0x80...0x90)
+        io << "Note Off: #{@status}, #{@data1}, #{@data2}"
+      when (0x90...0xA0)
+        io << "Note On: #{@status}, #{@data1}, #{@data2}"
+      when (0xA0...0xB0)
+        io << "Polyphonic Key Pressure: #{@status}, #{@data1}, #{@data2}"
+      when (0xB0...0xC0)
+        io << "CC: #{@status}, #{@data1}, #{@data2}"
+      when (0xC0...0xD0)
+        io << "Program Change: #{@status}, #{@data1}, #{@data2}"
+      when (0xD0...0xE0)
+        io << "Aftertouch: #{@status}, #{@data1}, #{@data2}"
+      when (0xE0...0xF0)
+        io << "Pitch Bend: #{@status}, #{@data1}, #{@data2}"
+      else
+        # this handles sysex, and realtime messages
+        io << "#{@status}, #{@data1}, #{@data2}, #{@data3}"
+      end
     end
 
     # alias for status
