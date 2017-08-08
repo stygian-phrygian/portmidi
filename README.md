@@ -8,7 +8,7 @@ Add this to your application's `shard.yml`:
 ```yaml
 dependencies:
   portmidi:
-    github: [your-github-name]/portmidi
+    github: stygian-phrygian/portmidi
 ```
 
 ## Usage
