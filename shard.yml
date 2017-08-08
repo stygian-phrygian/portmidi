@@ -1,0 +1,10 @@
+name: portmidi
+
+libraries:
+  libportmidi: "*"
+
+version: 0.1.0
+
+crystal: 0.23.1
+
+license: MIT
