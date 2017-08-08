@@ -18,3 +18,4 @@ require "portmidi"
 ```
 
 TODO: Write usage instructions here
+check out the examples directory currently
