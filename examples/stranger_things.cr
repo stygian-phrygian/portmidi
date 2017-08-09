@@ -7,7 +7,7 @@ quarter_note_duration = (60/BPM).seconds
 sixteenth_note_duration = (quarter_note_duration/4)
 # pitch offset (in MIDI notation 36 = C3)
 pitch_offset = 48
-# main bassline (eighth note duration each)
+# main bassline (quarter note duration each)
 bassline = [0, 0, 0, 2, 4, 4, 4, -5].map { |n| n + (pitch_offset - 12) }
 # main arpeggio (sixteenth note duration each)
 arpeggio = [0, 4, 7, 11, 12, 11, 7, 4].map { |n| n + (pitch_offset + 12) }
