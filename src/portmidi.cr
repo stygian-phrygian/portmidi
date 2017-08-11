@@ -176,7 +176,7 @@ module PortMidi
     # having a contradictory @opened instance variable among them
     def opened
       device_info = get_pm_midi_device_info @device_info
-      @opened = device_info.opened != 0
+      device_info.opened != 0
     end
 
     private def get_pm_midi_device_info(device_id)
