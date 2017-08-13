@@ -11,6 +11,8 @@ dependencies:
     github: stygian-phrygian/portmidi
 ```
 
+install portmidi and the required development files
+
 ## Usage
 
 ```crystal
