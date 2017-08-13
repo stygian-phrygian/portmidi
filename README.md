@@ -11,7 +11,7 @@ dependencies:
     github: stygian-phrygian/portmidi
 ```
 
-install portmidi and the required development files
+Make sure the portmidi library is already installed (as well as the required development headers)
 
 ## Usage
 
