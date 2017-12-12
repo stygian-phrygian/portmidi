@@ -17,7 +17,7 @@ Make sure PortMidi is already installed (as well as the required development hea
 
 ```crystal
 require "portmidi"
-require "portmidi/midi_utilities.cr" # <--- optional module w/ convenience methods
+require "portmidi/midi_utilities" # <--- optional module w/ convenience methods
 include MidiUtilities
 begin
   # turn on PortMidi
